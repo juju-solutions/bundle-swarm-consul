@@ -5,7 +5,7 @@
 This is a core bundle for a Docker Swarm comprised of two major components with the following features:
 
 - Swarm (clustering engine)
-  - Two node starter cluster, expandable to  
+  - Two node starter cluster, tested up to 20 nodes  
   - TLS used for communication between nodes for security
   - ZFS used as a docker datastore for resiliance and performance
 - Consul (key-value and DNS)
@@ -66,7 +66,7 @@ For more scalability, we recommend bumping up to 5 _total_ consul nodes per mode
 
 The following issues still need to be resolved with this solution and are being worked on:
 
-- Killing the the swam master will result in TLS breaking
+- Killing the the swam master will result in loss of cluster PKI.
 - Consul nodes are not using TLS yet.
 - No easy way to find where the docker containers got deployed without sshing into each swarm node.
 - Add status to show which consul node is leader, and who are followers, just like swarm.
