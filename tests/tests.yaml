@@ -2,3 +2,4 @@ packages:
   - python3-amulet
 python_packages:
   - amulet
+  - path.py

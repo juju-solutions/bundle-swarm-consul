@@ -5,6 +5,8 @@ import os
 import unittest
 import yaml
 
+from path import Path
+
 class TestCharm(unittest.TestCase):
 
     @classmethod
@@ -33,9 +35,58 @@ class TestCharm(unittest.TestCase):
         self.swarm = self.deployment.sentry['swarm']
         self.consul = self.deployment.sentry['consul']
 
+    def test_swarm_manager(self):
+        # Are we running the manager?
+        leader = get_leader(self.swarm)
+        if not leader:
+            raise "No leader found. Deployment broken"
+        out = leader.run('docker ps')
+        assert 'swarm_manager_1' in out[0]
+        # under no circumstances should the containers
+        # be cycling this early.
+        assert 'restarting' not in out[0]
 
-    def test_elasticsearch_host_in_templating(self):
-        pass
+    def test_swarm_agents(self):
+        ''' Cycle through every unit in the service and ensure the agent
+            container is running '''
+        for unit in self.swarm:
+            out = unit.run('docker ps')
+            assert 'swarm_agent_1' in out[0]
+            assert 'restarting' not in out[0]
+
+    def test_consul_storage_configuration(self):
+        ''' Cycle through everys warm unit and ensure the daemon is using
+            consul as a backend storage service for coordination of networking
+            config '''
+
+        # this may be flakey, possibly needs loop to validate
+        caddrs = self.consul[0].relation('api', 'swarm:consul')['private-address']
+
+        for unit in self.swarm:
+            out = unit.run('docker info')
+            assert "consul://{}:8500".format(caddrs) in out[0]
+
+    def test_tls_client_credentials_package(self):
+        ''' The master unit generates swarm credentials. This test method
+        will pull those credentials and run a container on the swarm cluster
+        to validate '''
+
+        unpack_path = '/home/ubuntu/.swarm'
+        archive_path = '/home/ubuntu/swarm_credentials.tar'
+        ca_path =
+
+        leader = get_leader(self.swarm)
+        leader.run('tar xvf -C /home/ubuntu/.swarm /home/ubuntu/swarm_credentials.tar')  # noqa
+        ca_contents = leader.file_contents('/home/ubuntu/.swarm/ca.pem')
+        crt_contents = leader.file_contents('/home/ubuntu/.swarm/')
+
+
+# Helper method to determine which unit is a leader in a given set of sentries
+def get_leader(charm):
+    for unit in charm:
+        out = unit.run('is-leader')
+        if out[0] == 'True':
+            return unit
 
 
 if __name__ == "__main__":
