@@ -1,0 +1,42 @@
+#!/usr/bin/python3
+
+import amulet
+import os
+import unittest
+import yaml
+
+class TestCharm(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(self):
+
+        # Get the relative bundle path from the environment variable.
+        self.bundle = os.getenv('BUNDLE', 'bundle.yaml')
+        # Create a path to the bundle based on this file's location.
+        self.bundle_path = os.path.join(os.path.dirname(__file__),
+                                       '..',
+                                       self.bundle)
+        # Normalize the path to the bundle.
+        self.bundle_path = os.path.abspath(self.bundle_path)
+
+        print('Deploying bundle: {0}'.format(self.bundle_path))
+
+        self.deployment = amulet.Deployment()
+        with open(self.bundle_path, 'r') as bundle_file:
+            contents = yaml.safe_load(bundle_file)
+            self.deployment.load(contents)
+
+        self.deployment.setup(timeout=1200)
+        self.deployment.sentry.wait()
+
+
+        self.swarm = self.deployment.sentry['swarm']
+        self.consul = self.deployment.sentry['consul']
+
+
+    def test_elasticsearch_host_in_templating(self):
+        pass
+
+
+if __name__ == "__main__":
+    unittest.main()
