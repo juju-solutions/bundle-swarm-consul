@@ -1,7 +1,7 @@
 series: trusty
 services:
   swarm:
-    charm: "cs:~lazypower/trusty/swarm-12"
+    charm: "cs:~containers/trusty/swarm-1"
     num_units: 2
     expose: true
     annotations:
