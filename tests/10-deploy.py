@@ -2,6 +2,7 @@
 
 import amulet
 import os
+import re
 import unittest
 import yaml
 import subprocess
@@ -68,12 +69,19 @@ class TestCharm(unittest.TestCase):
             consul as a backend storage service for coordination of networking
             config '''
 
-        # this may be flakey, possibly needs loop to validate
-        caddrs = self.consul[0].relation('api', 'swarm:consul')['private-address']  # noqa
+        consul_addresses = []
+        for unit in self.consul:
+            caddr = unit.relation('api', 'swarm:consul')['private-address']
+            consul_addresses.append(caddr)
 
         for unit in self.swarm:
             out = unit.run('docker info')
-            assert "consul://{}:8500".format(caddrs) in out[0]
+            needle = re.search('consul://(.+?):8500', out[0])
+            if needle:
+                consul_address = needle.group(1)
+                assert consul_address in consul_addresses
+            else:
+                raise Exception("Missing consul storage output on unit {}".format(unit.info['service']))  # noqa
 
     def test_tls_swarm_client_credentials(self):
         ''' The master unit generates swarm credentials. This test method

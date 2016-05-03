@@ -1,14 +1,14 @@
 series: trusty
 services:
   swarm:
-    charm: "cs:~containers/trusty/swarm-1"
+    charm: "cs:~containers/trusty/swarm-2"
     num_units: 2
     expose: true
     annotations:
       "gui-x": "1227.010009765625"
       "gui-y": "181.14959716796875"
   consul:
-    charm: "cs:~containers/trusty/consul-0"
+    charm: "cs:~containers/trusty/consul-1"
     num_units: 3
     annotations:
       "gui-x": "822.357177734375"
