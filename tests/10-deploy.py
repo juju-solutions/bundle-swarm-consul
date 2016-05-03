@@ -10,6 +10,7 @@ from tempfile import mkdtemp
 from path import Path
 from shutil import rmtree
 
+
 class TestCharm(unittest.TestCase):
 
     @classmethod
@@ -19,8 +20,8 @@ class TestCharm(unittest.TestCase):
         self.bundle = os.getenv('BUNDLE', 'bundle.yaml')
         # Create a path to the bundle based on this file's location.
         self.bundle_path = os.path.join(os.path.dirname(__file__),
-                                       '..',
-                                       self.bundle)
+                                        '..',
+                                        self.bundle)
         # Normalize the path to the bundle.
         self.bundle_path = os.path.abspath(self.bundle_path)
 
@@ -33,7 +34,6 @@ class TestCharm(unittest.TestCase):
 
         self.deployment.setup(timeout=1200)
         self.deployment.sentry.wait()
-
 
         self.swarm = self.deployment.sentry['swarm']
         self.consul = self.deployment.sentry['consul']
@@ -69,7 +69,7 @@ class TestCharm(unittest.TestCase):
             config '''
 
         # this may be flakey, possibly needs loop to validate
-        caddrs = self.consul[0].relation('api', 'swarm:consul')['private-address']
+        caddrs = self.consul[0].relation('api', 'swarm:consul')['private-address']  # noqa
 
         for unit in self.swarm:
             out = unit.run('docker info')
@@ -118,13 +118,12 @@ class TestCharm(unittest.TestCase):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        stdout, stder = p.communicate()
+        stdout, stderr = p.communicate()
         output = stdout if p.returncode == 0 else stderr
         out = output.decode('utf8')
         # Knowing we have the cluster on the wire will be good enough to
         # assert TLS is working.
         assert 'Nodes: 2' in out
-
 
 
 # Helper method to determine which unit is a leader in a given set of sentries
