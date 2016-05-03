@@ -4,8 +4,11 @@ import amulet
 import os
 import unittest
 import yaml
+import subprocess
 
+from tempfile import mkdtemp
 from path import Path
+from shutil import rmtree
 
 class TestCharm(unittest.TestCase):
 
@@ -34,6 +37,12 @@ class TestCharm(unittest.TestCase):
 
         self.swarm = self.deployment.sentry['swarm']
         self.consul = self.deployment.sentry['consul']
+        # Setup a temporary docker-swarm workspace
+        self.sub = Path(mkdtemp('docker-credentials'))
+
+    @classmethod
+    def tearDownClass(self):
+        rmtree(self.sub)
 
     def test_swarm_manager(self):
         # Are we running the manager?
@@ -66,19 +75,56 @@ class TestCharm(unittest.TestCase):
             out = unit.run('docker info')
             assert "consul://{}:8500".format(caddrs) in out[0]
 
-    def test_tls_client_credentials_package(self):
+    def test_tls_swarm_client_credentials(self):
         ''' The master unit generates swarm credentials. This test method
         will pull those credentials and run a container on the swarm cluster
         to validate '''
 
-        unpack_path = '/home/ubuntu/.swarm'
-        archive_path = '/home/ubuntu/swarm_credentials.tar'
-        ca_path =
+        # Setup some path variables to condense code
+        unpack_path = Path('/home/ubuntu')
+        archive_path = Path('/home/ubuntu/swarm_credentials.tar')
+        ca_path = unpack_path + '/swarm_credentials/ca.pem'
+        cert_path = unpack_path + '/swarm_credentials/cert.pem'
+        key_path = unpack_path + '/swarm_credentials/key.pem'
 
+        # Determine leader, and extract the credentials
         leader = get_leader(self.swarm)
-        leader.run('tar xvf -C /home/ubuntu/.swarm /home/ubuntu/swarm_credentials.tar')  # noqa
-        ca_contents = leader.file_contents('/home/ubuntu/.swarm/ca.pem')
-        crt_contents = leader.file_contents('/home/ubuntu/.swarm/')
+        leader.run('mkdir -p {}'.format(unpack_path))
+        out = leader.run('cd /home/ubuntu && tar xvf {}'.format(archive_path))
+        if out[1]:
+            raise "Error extracting credentials archive. Failing test"
+        # Read the contents of the certificates
+        ca_contents = leader.file_contents(ca_path)
+        crt_contents = leader.file_contents(cert_path)
+        key_contents = leader.file_contents(key_path)
+
+        # Create a temporary path on disk, and setup the DOCKER_HOME
+        with open(self.sub + '/ca.pem', 'w+') as fp:
+            fp.write(ca_contents)
+        with open(self.sub + '/cert.pem', 'w+') as fp:
+            fp.write(crt_contents)
+        with open(self.sub + '/key.pem', 'w+') as fp:
+            fp.write(key_contents)
+
+        os.environ['DOCKER_CERT_PATH'] = self.sub
+        os.environ['DOCKER_TLS_VERIFY'] = '1'
+        os.environ['DOCKER_HOST'] = 'tcp://{}:3376'.format(leader.info['public-address'])  # noqa
+
+        # Have docker inspect the swarm cluster, and verify we have 2 nodes.
+        # good enough of a full stack test to validate TLS is working against
+        # the cluster.
+        p = subprocess.Popen(
+            ['docker', 'info'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        stdout, stder = p.communicate()
+        output = stdout if p.returncode == 0 else stderr
+        out = output.decode('utf8')
+        # Knowing we have the cluster on the wire will be good enough to
+        # assert TLS is working.
+        assert 'Nodes: 2' in out
+
 
 
 # Helper method to determine which unit is a leader in a given set of sentries

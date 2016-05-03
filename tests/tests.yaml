@@ -1,5 +1,7 @@
 packages:
   - python3-amulet
+  - docker.io
 python_packages:
   - amulet
   - path.py
+  - tmpdir
